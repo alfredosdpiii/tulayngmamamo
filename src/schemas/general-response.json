@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "response": {
+      "type": "string",
+      "description": "The main response content"
+    },
+    "summary": {
+      "type": ["string", "null"],
+      "description": "A brief summary if the response is long"
+    },
+    "references": {
+      "type": ["array", "null"],
+      "description": "Any relevant file or code references",
+      "items": { "type": "string" }
+    }
+  },
+  "required": ["response", "summary", "references"],
+  "additionalProperties": false
+}

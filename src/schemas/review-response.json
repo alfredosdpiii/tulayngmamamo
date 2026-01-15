@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "summary": {
+      "type": "string",
+      "description": "Overall assessment of the code review"
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["approve", "request_changes", "comment"],
+      "description": "Review verdict"
+    },
+    "issues": {
+      "type": ["array", "null"],
+      "description": "Issues found during review",
+      "items": {
+        "type": "object",
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": ["critical", "major", "minor", "suggestion"]
+          },
+          "file": { "type": ["string", "null"] },
+          "line": { "type": ["integer", "null"] },
+          "description": { "type": "string" },
+          "suggestion": { "type": ["string", "null"] }
+        },
+        "required": ["severity", "file", "line", "description", "suggestion"],
+        "additionalProperties": false
+      }
+    },
+    "strengths": {
+      "type": ["array", "null"],
+      "description": "Positive aspects of the code",
+      "items": { "type": "string" }
+    },
+    "recommendations": {
+      "type": ["array", "null"],
+      "description": "General recommendations for improvement",
+      "items": { "type": "string" }
+    }
+  },
+  "required": ["summary", "verdict", "issues", "strengths", "recommendations"],
+  "additionalProperties": false
+}

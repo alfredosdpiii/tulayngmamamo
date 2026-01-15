@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "tulayngmamamo": {
+      "type": "http",
+      "url": "http://127.0.0.1:3790/mcp"
+    },
+    "memorantado": {
+      "type": "http",
+      "url": "http://localhost:3789/mcp"
+    }
+  }
+}
