@@ -19,7 +19,6 @@ type SessionInfo = {
 
 type RegisterMcpRoutesOpts = {
   db: Database.Database;
-  maxSessions?: number;
   queueProcessor?: QueueProcessor;
   clientRegistry?: ClientRegistry;
   codexMcpEnabled?: boolean;
@@ -30,16 +29,7 @@ export function registerMcpRoutes(
   app: FastifyInstance,
   opts: RegisterMcpRoutesOpts
 ): void {
-  const maxSessions = opts.maxSessions ?? 10;
   const sessions = new Map<string, SessionInfo>();
-
-  function evictIfNeeded(): void {
-    if (sessions.size >= maxSessions) {
-      const err = new Error("Too many MCP sessions") as Error & { statusCode: number };
-      err.statusCode = 429;
-      throw err;
-    }
-  }
 
   app.post("/mcp", async (req, reply) => {
     const body = req.body as unknown;
@@ -73,8 +63,6 @@ export function registerMcpRoutes(
           id: null,
         };
       }
-
-      evictIfNeeded();
 
       const eventStore = new InMemoryEventStore({
         ttlMs: 15 * 60 * 1000,
@@ -187,7 +175,6 @@ export function registerMcpRoutes(
     return {
       sessions: sessionList,
       sessionCount: sessions.size,
-      maxSessions,
     };
   });
 

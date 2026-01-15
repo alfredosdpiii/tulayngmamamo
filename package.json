@@ -19,8 +19,16 @@
     "llm-bridge",
     "ai"
   ],
-  "author": "",
+  "author": "alfredosdpiii",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alfredosdpiii/tulayngmamamo.git"
+  },
+  "homepage": "https://github.com/alfredosdpiii/tulayngmamamo#readme",
+  "bugs": {
+    "url": "https://github.com/alfredosdpiii/tulayngmamamo/issues"
+  },
   "scripts": {
     "dev": "tsx watch src/main.ts",
     "build": "tsc && npm run copy:schema",
