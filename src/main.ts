@@ -1,14 +1,17 @@
 import Fastify from "fastify";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { openDb } from "./db/db.js";
 import { migrate } from "./db/migrate.js";
 import { installSecurity } from "./security.js";
 import { registerMcpRoutes } from "./mcp/http.js";
+import { createMcpServer } from "./mcp/server.js";
 import { ClientRegistry } from "./mcp/clientRegistry.js";
 import { isAvailable as isMemorantadoAvailable } from "./integrations/memorantado.js";
 import { QueueProcessor } from "./router/queueProcessor.js";
 
 const PORT = Number(process.env.TULAYNGMAMAMO_PORT ?? 3790);
 const HOST = "127.0.0.1";
+const STDIO_MODE = process.argv.includes("--stdio");
 
 // Codex MCP server integration configuration
 const CODEX_MCP_ENABLED = process.env.TULAYNGMAMAMO_CODEX_MCP_ENABLED !== "false";
@@ -18,7 +21,26 @@ const CODEX_APPROVAL_POLICY = process.env.TULAYNGMAMAMO_CODEX_APPROVAL_POLICY ??
 // Optional: Override the default critical architect persona
 const CODEX_BASE_INSTRUCTIONS = process.env.TULAYNGMAMAMO_CODEX_BASE_INSTRUCTIONS;
 
-async function main(): Promise<void> {
+async function runStdioMode(): Promise<void> {
+  const db = openDb();
+  migrate(db);
+
+  const server = createMcpServer(db, {
+    clientId: "claude",
+    codexMcpEnabled: CODEX_MCP_ENABLED,
+    codexMcpClientOpts: {
+      codexPath: CODEX_PATH,
+      sandbox: CODEX_SANDBOX,
+      approvalPolicy: CODEX_APPROVAL_POLICY,
+      baseInstructions: CODEX_BASE_INSTRUCTIONS,
+    },
+  });
+
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+}
+
+async function runHttpMode(): Promise<void> {
   const app = Fastify({
     logger: true,
     bodyLimit: 5 * 1024 * 1024,
@@ -79,6 +101,14 @@ async function main(): Promise<void> {
     console.log(`codex MCP server integration: enabled (path: ${CODEX_PATH}, sandbox: ${CODEX_SANDBOX})`);
   } else {
     console.log("codex MCP server integration: disabled");
+  }
+}
+
+async function main(): Promise<void> {
+  if (STDIO_MODE) {
+    await runStdioMode();
+  } else {
+    await runHttpMode();
   }
 }
 
