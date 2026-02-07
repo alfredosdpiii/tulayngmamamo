@@ -2,7 +2,7 @@ import type Database from "better-sqlite3";
 import type { ClientId } from "./clients.js";
 import { randomUUID } from "node:crypto";
 
-export type InvocationType = "codex_exec" | "claude_mcp";
+export type InvocationType = "codex_exec" | "claude_exec" | "claude_mcp";
 export type InvocationStatus = "pending" | "running" | "completed" | "failed" | "timeout";
 
 export interface Invocation {

@@ -7,6 +7,7 @@ import {
   getResponseToMessage,
   type Message,
   type CreateMessageInput,
+  type MessageType,
 } from "../db/messages.js";
 import {
   createConversation,
@@ -15,6 +16,8 @@ import {
 } from "../db/conversations.js";
 import { enqueueMessage } from "../db/message_queue.js";
 import { selectAgent, getAgent, type AgentName } from "../agents/index.js";
+import { invokeCodexExec } from "./invoker.js";
+import { invokeClaudeExec } from "./claudeInvoker.js";
 
 export interface SendMessageOpts {
   conversationId?: string;
@@ -94,7 +97,96 @@ export class MessageDispatcher {
       max_attempts: 5,
     });
 
+    // Always invoke the target directly as a fire-and-forget subprocess.
+    // The response is stored as a reply message for get_response to pick up.
+    if (opts.target === "codex") {
+      this.fireCodexInvocation(message, conversation);
+    } else if (opts.target === "claude") {
+      this.fireClaudeInvocation(message, conversation);
+    }
+
     return result;
+  }
+
+  private fireCodexInvocation(message: Message, conversation: Conversation): void {
+    this.invokeCodexAndStoreReply(message, conversation).catch((err) => {
+      console.error(`[dispatcher] codex invocation failed for message ${message.id}:`, err);
+    });
+  }
+
+  private async invokeCodexAndStoreReply(
+    message: Message,
+    conversation: Conversation
+  ): Promise<void> {
+    // Build conversation context from recent messages (exclude the message we just sent)
+    const recentMessages = getConversationMessages(this.db, conversation.id, { limit: 10 });
+    const contextLines = recentMessages
+      .filter((m) => m.id !== message.id)
+      .map((m) => `[${m.sender}]: ${m.content}`);
+    const context = contextLines.length > 0 ? contextLines.join("\n") : undefined;
+
+    const result = await invokeCodexExec(this.db, message, context);
+
+    if (result.response) {
+      const responseTypeMap: Record<string, MessageType> = {
+        research_request: "research_response",
+        review_request: "review_response",
+      };
+      const responseType: MessageType = responseTypeMap[message.message_type] ?? "message";
+
+      createMessage(this.db, {
+        conversation_id: conversation.id,
+        sender: "codex",
+        target: message.sender,
+        content: result.response,
+        message_type: responseType,
+        response_to_id: message.id,
+        metadata: {
+          invocation_id: result.id,
+          exit_code: result.exitCode,
+        },
+      });
+    }
+  }
+
+  private fireClaudeInvocation(message: Message, conversation: Conversation): void {
+    this.invokeClaudeAndStoreReply(message, conversation).catch((err) => {
+      console.error(`[dispatcher] claude invocation failed for message ${message.id}:`, err);
+    });
+  }
+
+  private async invokeClaudeAndStoreReply(
+    message: Message,
+    conversation: Conversation
+  ): Promise<void> {
+    const recentMessages = getConversationMessages(this.db, conversation.id, { limit: 10 });
+    const contextLines = recentMessages
+      .filter((m) => m.id !== message.id)
+      .map((m) => `[${m.sender}]: ${m.content}`);
+    const context = contextLines.length > 0 ? contextLines.join("\n") : undefined;
+
+    const result = await invokeClaudeExec(this.db, message, context);
+
+    if (result.response) {
+      const responseTypeMap: Record<string, MessageType> = {
+        research_request: "research_response",
+        review_request: "review_response",
+      };
+      const responseType: MessageType = responseTypeMap[message.message_type] ?? "message";
+
+      createMessage(this.db, {
+        conversation_id: conversation.id,
+        sender: "claude",
+        target: message.sender,
+        content: result.response,
+        message_type: responseType,
+        response_to_id: message.id,
+        metadata: {
+          invocation_id: result.id,
+          exit_code: result.exitCode,
+        },
+      });
+    }
   }
 
   async waitForResponse(messageId: string, timeoutMs: number): Promise<Message | null> {
