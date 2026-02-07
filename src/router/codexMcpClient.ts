@@ -7,6 +7,10 @@ export interface CodexMcpClientOpts {
   codexPath?: string;
   /** Working directory for codex process */
   cwd?: string;
+  /** Codex model to use for spawned sessions (default: "gpt-5.3-codex") */
+  model?: string;
+  /** Codex reasoning effort (default: "xhigh") */
+  modelReasoningEffort?: string;
   /** Sandbox mode: "workspace-read" | "workspace-write" | "none" */
   sandbox?: string;
   /** Approval policy: "never" | "auto-edit" | "full-auto" */
@@ -69,6 +73,8 @@ export class CodexMcpClient {
     this.opts = {
       codexPath: opts.codexPath ?? "codex",
       cwd: opts.cwd ?? process.cwd(),
+      model: opts.model ?? "gpt-5.3-codex",
+      modelReasoningEffort: opts.modelReasoningEffort ?? "xhigh",
       sandbox: opts.sandbox ?? "workspace-read",
       approvalPolicy: opts.approvalPolicy ?? "never",
       baseInstructions: opts.baseInstructions ?? DEFAULT_BASE_INSTRUCTIONS,
@@ -93,7 +99,13 @@ export class CodexMcpClient {
     try {
       this.transport = new StdioClientTransport({
         command: this.opts.codexPath,
-        args: ["mcp-server"],
+        args: [
+          "mcp-server",
+          "-c",
+          `model="${this.opts.model}"`,
+          "-c",
+          `model_reasoning_effort="${this.opts.modelReasoningEffort}"`,
+        ],
         cwd: this.opts.cwd,
         stderr: "pipe", // Capture stderr for debugging
       });
@@ -167,8 +179,12 @@ export class CodexMcpClient {
           arguments: {
             prompt,
             "approval-policy": this.opts.approvalPolicy,
+            model: this.opts.model,
             sandbox,
             "base-instructions": baseInstructions,
+            config: {
+              model_reasoning_effort: this.opts.modelReasoningEffort,
+            },
           },
         });
       }

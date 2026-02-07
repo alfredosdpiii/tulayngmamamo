@@ -5,7 +5,6 @@ import type { ClientId } from "../db/clients.js";
 import { MessageDispatcher } from "../router/dispatcher.js";
 import type { ClientRegistry } from "./clientRegistry.js";
 import type { CodexMcpClientOpts } from "../router/codexMcpClient.js";
-import { listAgentNames } from "../agents/index.js";
 import {
   createConversation,
   listConversations,
@@ -23,8 +22,6 @@ import {
 } from "../db/shared_context.js";
 import {
   syncConversationSummary,
-  syncResearchFindings,
-  syncCodeReview,
 } from "../integrations/memorantado.js";
 
 type CreateMcpServerOpts = {
@@ -50,11 +47,7 @@ export function createMcpServer(
     version: "0.1.0",
   });
 
-  const dispatcher = new MessageDispatcher(db, {
-    clientRegistry: opts.clientRegistry,
-    codexMcpEnabled: opts.codexMcpEnabled,
-    codexMcpClientOpts: opts.codexMcpClientOpts,
-  });
+  const dispatcher = new MessageDispatcher(db);
 
   // who_am_i
   server.tool("who_am_i", {}, async () => {
@@ -82,7 +75,7 @@ export function createMcpServer(
       target: z.enum(["claude", "codex"]),
       content: z.string().min(1),
       priority: z.enum(["normal", "high", "urgent"]).default("normal"),
-      wait_for_response: z.boolean().default(true),
+      wait_for_response: z.boolean().default(false),
       timeout_ms: z.number().int().positive().max(300000).default(60000),
       agent: z.enum(["architect", "oracle"] as const).optional(),
     },
@@ -102,8 +95,6 @@ export function createMcpServer(
           target: input.target,
           content: input.content,
           priority: input.priority,
-          waitForResponse: input.wait_for_response,
-          timeoutMs: input.timeout_ms,
           agent: input.agent,
         });
 
@@ -113,15 +104,10 @@ export function createMcpServer(
             text: JSON.stringify({
               conversation_id: result.conversation.id,
               message_id: result.message.id,
-              status: result.message.status,
-              invoked: result.invoked ?? false,
-              invocation_error: result.invocationError ?? null,
+              status: "queued",
+              delivery_mode: "async_queue",
+              wait_for_response_ignored: input.wait_for_response,
               selected_agent: result.selectedAgent ?? null,
-              response: result.response ? {
-                id: result.response.id,
-                content: result.response.content,
-                created_at: result.response.created_at,
-              } : null,
             }, null, 2),
           }],
         };
@@ -381,9 +367,6 @@ export function createMcpServer(
           prompt += "\n\nProvide a comprehensive analysis with key findings and practical insights.";
         }
 
-        // Timeout based on depth: shallow=2min, medium=5min, deep=10min
-        const timeoutMs = input.depth === "shallow" ? 120000 : input.depth === "deep" ? 600000 : 300000;
-
         const result = await dispatcher.sendMessage({
           conversationId: input.conversation_id,
           sender,
@@ -391,20 +374,8 @@ export function createMcpServer(
           content: prompt,
           messageType: "research_request",
           priority: "normal",
-          waitForResponse: true,
-          timeoutMs,
-          useOutputSchema: true, // Force structured completion
           metadata: { topic: input.topic, depth: input.depth },
         });
-
-        if (input.sync_to_memorantado && result.response) {
-          await syncResearchFindings(
-            result.conversation.id,
-            input.topic,
-            result.response.content,
-            result.conversation.project ?? "tulayngmamamo"
-          );
-        }
 
         return {
           content: [{
@@ -414,12 +385,9 @@ export function createMcpServer(
               message_id: result.message.id,
               topic: input.topic,
               depth: input.depth,
-              findings: result.response ? {
-                id: result.response.id,
-                content: result.response.content,
-                synced_to_memorantado: input.sync_to_memorantado,
-              } : null,
-              status: result.response ? "completed" : "pending",
+              status: "queued",
+              delivery_mode: "async_queue",
+              sync_to_memorantado_deferred: input.sync_to_memorantado,
             }, null, 2),
           }],
         };
@@ -476,19 +444,8 @@ export function createMcpServer(
           content: prompt,
           messageType: "review_request",
           priority: "normal",
-          waitForResponse: true,
-          timeoutMs: 120000,
           metadata: { review_type: input.review_type },
         });
-
-        if (input.sync_to_memorantado && result.response) {
-          await syncCodeReview(
-            result.conversation.id,
-            input.review_type,
-            result.response.content,
-            result.conversation.project ?? "tulayngmamamo"
-          );
-        }
 
         return {
           content: [{
@@ -497,12 +454,9 @@ export function createMcpServer(
               conversation_id: result.conversation.id,
               message_id: result.message.id,
               review_type: input.review_type,
-              review: result.response ? {
-                id: result.response.id,
-                content: result.response.content,
-                synced_to_memorantado: input.sync_to_memorantado,
-              } : null,
-              status: result.response ? "completed" : "pending",
+              status: "queued",
+              delivery_mode: "async_queue",
+              sync_to_memorantado_deferred: input.sync_to_memorantado,
             }, null, 2),
           }],
         };

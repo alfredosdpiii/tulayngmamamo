@@ -20,6 +20,8 @@ npm run typecheck    # Type check without emitting
 - `TULAYNGMAMAMO_PORT` - Server port (default: 3790)
 - `TULAYNGMAMAMO_DB` - SQLite database path (default: ~/.tulayngmamamo/tulayngmamamo.sqlite)
 - `MEMORANTADO_URL` - URL for memorantado integration (default: http://127.0.0.1:3789)
+- `TULAYNGMAMAMO_CODEX_MODEL` - Default Codex model (default: gpt-5.3-codex)
+- `TULAYNGMAMAMO_CODEX_REASONING_EFFORT` - Default reasoning effort (default: xhigh)
 
 ## Architecture
 
@@ -34,8 +36,8 @@ npm run typecheck    # Type check without emitting
 - `identity.ts` - Client identification from request headers
 
 ### Message Router (`src/router/`)
-- `dispatcher.ts` - MessageDispatcher handles message routing, conversation creation, response polling
-- `invoker.ts` - Spawns `codex exec` subprocess when Codex is offline, parses JSON output for response
+- `dispatcher.ts` - Queue-first message routing and conversation creation (fire-and-forget delivery)
+- `invoker.ts` - Codex exec invocation utilities (fallback/integration path)
 
 ### Database Layer (`src/db/`)
 - `db.ts` - SQLite connection with WAL mode, stores in ~/.tulayngmamamo/
@@ -54,6 +56,6 @@ npm run typecheck    # Type check without emitting
 
 **Client Identity**: Two clients are supported: `claude` and `codex`. Identity is determined from request headers via `identifyClient()`.
 
-**Message Flow**: Messages are stored in SQLite. If target client is online (has active MCP session), message is marked delivered. If Codex is offline, `invokeCodexExec()` spawns the codex CLI directly.
+**Message Flow**: Messages are stored in SQLite and enqueued in `message_queue`. Delivery is asynchronous: queue processor marks messages delivered when the target is online, and responses are retrieved via `get_response`/history tools.
 
 **Conversations**: Multi-turn dialogues tracked with status (active/completed), optional project association, and summaries synced to memorantado on close.

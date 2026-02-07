@@ -5,9 +5,9 @@ MCP server enabling bidirectional communication between Claude Code CLI and Open
 ## Features
 
 - **AI-to-AI Communication**: Claude and Codex can send messages to each other
+- **Queue-First Delivery**: Fire-and-forget messaging for both Claude and Codex
 - **Agent Personas**: Architect (critical code review) and Oracle (debugging/root cause analysis) personas
 - **Conversation Tracking**: SQLite-backed message history
-- **Codex MCP Integration**: Spawns Codex as MCP server on-demand
 - **memorantado Integration**: Sync conversation summaries to knowledge graph
 - **Unlimited Connections**: Multiple Claude Code clients can connect simultaneously
 
@@ -121,6 +121,8 @@ The Oracle acts as a strategic advisor who:
 | `TULAYNGMAMAMO_PORT` | `3790` | Server port |
 | `TULAYNGMAMAMO_DB` | `~/.tulayngmamamo/tulayngmamamo.sqlite` | Database path |
 | `MEMORANTADO_URL` | `http://127.0.0.1:3789` | memorantado integration URL |
+| `TULAYNGMAMAMO_CODEX_MODEL` | `gpt-5.3-codex` | Default Codex model |
+| `TULAYNGMAMAMO_CODEX_REASONING_EFFORT` | `xhigh` | Default Codex reasoning effort |
 
 ## Architecture
 
@@ -135,10 +137,10 @@ Claude Code CLI  <---->  tulayngmamamo  <---->  Codex CLI
 ### Message Flow
 
 1. Client sends message via MCP tool
-2. tulayngmamamo checks if target is online (in-memory registry)
-3. If online: delivers to target's MCP session
-4. If offline (Codex): spawns `codex mcp-server` or falls back to `codex exec`
-5. Response stored in SQLite and returned to sender
+2. Message is persisted and enqueued in SQLite (`message_queue`)
+3. Queue processor delivers when target client is online
+4. Target replies with a new message linked by `response_to_id`
+5. Sender fetches replies via `get_response` or conversation history
 
 ## License
 

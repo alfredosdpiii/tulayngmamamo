@@ -17,6 +17,9 @@ export type { Invocation };
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const SCHEMAS_DIR = join(__dirname, "..", "schemas");
+const DEFAULT_CODEX_MODEL = process.env.TULAYNGMAMAMO_CODEX_MODEL ?? "gpt-5.3-codex";
+const DEFAULT_CODEX_REASONING_EFFORT =
+  process.env.TULAYNGMAMAMO_CODEX_REASONING_EFFORT ?? "xhigh";
 
 function getSchemaPath(messageType: string | undefined): string {
   switch (messageType) {
@@ -291,6 +294,10 @@ export async function invokeCodexExec(
     "--json",
     "--full-auto",
     "--skip-git-repo-check",
+    "-m",
+    DEFAULT_CODEX_MODEL,
+    "-c",
+    `model_reasoning_effort="${DEFAULT_CODEX_REASONING_EFFORT}"`,
   ];
 
   // Add output schema to force Codex to produce a final structured response

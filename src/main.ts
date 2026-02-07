@@ -18,6 +18,9 @@ const CODEX_MCP_ENABLED = process.env.TULAYNGMAMAMO_CODEX_MCP_ENABLED !== "false
 const CODEX_PATH = process.env.TULAYNGMAMAMO_CODEX_PATH ?? "codex";
 const CODEX_SANDBOX = process.env.TULAYNGMAMAMO_CODEX_SANDBOX ?? "workspace-read";
 const CODEX_APPROVAL_POLICY = process.env.TULAYNGMAMAMO_CODEX_APPROVAL_POLICY ?? "never";
+const CODEX_MODEL = process.env.TULAYNGMAMAMO_CODEX_MODEL ?? "gpt-5.3-codex";
+const CODEX_REASONING_EFFORT =
+  process.env.TULAYNGMAMAMO_CODEX_REASONING_EFFORT ?? "xhigh";
 // Optional: Override the default critical architect persona
 const CODEX_BASE_INSTRUCTIONS = process.env.TULAYNGMAMAMO_CODEX_BASE_INSTRUCTIONS;
 
@@ -32,6 +35,8 @@ async function runStdioMode(): Promise<void> {
       codexPath: CODEX_PATH,
       sandbox: CODEX_SANDBOX,
       approvalPolicy: CODEX_APPROVAL_POLICY,
+      model: CODEX_MODEL,
+      modelReasoningEffort: CODEX_REASONING_EFFORT,
       baseInstructions: CODEX_BASE_INSTRUCTIONS,
     },
   });
@@ -66,6 +71,8 @@ async function runHttpMode(): Promise<void> {
       codexPath: CODEX_PATH,
       sandbox: CODEX_SANDBOX,
       approvalPolicy: CODEX_APPROVAL_POLICY,
+      model: CODEX_MODEL,
+      modelReasoningEffort: CODEX_REASONING_EFFORT,
       baseInstructions: CODEX_BASE_INSTRUCTIONS,
     },
   });
@@ -98,7 +105,9 @@ async function runHttpMode(): Promise<void> {
 
   // Log Codex MCP server integration status
   if (CODEX_MCP_ENABLED) {
-    console.log(`codex MCP server integration: enabled (path: ${CODEX_PATH}, sandbox: ${CODEX_SANDBOX})`);
+    console.log(
+      `codex MCP server integration: enabled (path: ${CODEX_PATH}, sandbox: ${CODEX_SANDBOX}, model: ${CODEX_MODEL}, reasoning: ${CODEX_REASONING_EFFORT})`
+    );
   } else {
     console.log("codex MCP server integration: disabled");
   }
