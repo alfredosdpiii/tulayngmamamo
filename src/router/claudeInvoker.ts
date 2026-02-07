@@ -87,12 +87,13 @@ export async function invokeClaudeExec(
 
   const args = [
     "-p",
-    prompt,
     "--output-format", "json",
     "--model", DEFAULT_CLAUDE_MODEL,
     "--dangerously-skip-permissions",
     // Prevent recursion: don't load any MCP servers in the subprocess
     "--strict-mcp-config",
+    // Prompt must be last (positional argument)
+    prompt,
   ];
 
   const commandInfo = JSON.stringify({

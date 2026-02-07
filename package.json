@@ -1,6 +1,6 @@
 {
   "name": "tulayngmamamo",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "MCP server for bidirectional communication between Claude Code CLI and Codex CLI",
   "type": "module",
   "main": "dist/main.js",
