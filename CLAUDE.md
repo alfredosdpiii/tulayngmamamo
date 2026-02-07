@@ -54,7 +54,7 @@ npm run typecheck    # Type check without emitting
 
 ## Key Concepts
 
-**Client Identity**: Two clients are supported: `claude` and `codex`. Identity is determined from request headers via `identifyClient()`.
+**Client Identity**: Two clients are supported: `claude` and `codex`. In HTTP mode, identity is determined from request headers via `identifyClient()`. In stdio mode, identity is resolved from `--client-id` / `TULAYNGMAMAMO_CLIENT_ID` (with parent-process auto-detection fallback).
 
 **Message Flow**: Messages are stored in SQLite and enqueued in `message_queue`. Delivery is asynchronous: queue processor marks messages delivered when the target is online, and responses are retrieved via `get_response`/history tools.
 

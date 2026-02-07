@@ -1,10 +1,13 @@
 import Fastify from "fastify";
+import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { openDb } from "./db/db.js";
 import { migrate } from "./db/migrate.js";
 import { installSecurity } from "./security.js";
 import { registerMcpRoutes } from "./mcp/http.js";
 import { createMcpServer } from "./mcp/server.js";
+import type { ClientId } from "./db/clients.js";
 import { ClientRegistry } from "./mcp/clientRegistry.js";
 import { isAvailable as isMemorantadoAvailable } from "./integrations/memorantado.js";
 import { QueueProcessor } from "./router/queueProcessor.js";
@@ -24,12 +27,65 @@ const CODEX_REASONING_EFFORT =
 // Optional: Override the default critical architect persona
 const CODEX_BASE_INSTRUCTIONS = process.env.TULAYNGMAMAMO_CODEX_BASE_INSTRUCTIONS;
 
+function parseClientId(value: string | undefined): ClientId | undefined {
+  if (value === "claude" || value === "codex") return value;
+  return undefined;
+}
+
+function getArgValue(flag: string): string | undefined {
+  const arg = process.argv.find((item) => item.startsWith(`${flag}=`));
+  if (arg) return arg.slice(`${flag}=`.length);
+  const index = process.argv.indexOf(flag);
+  if (index >= 0) return process.argv[index + 1];
+  return undefined;
+}
+
+function inferClientIdFromParentProcess(): ClientId | undefined {
+  const parseCommand = (cmd: string): ClientId | undefined => {
+    const lower = cmd.toLowerCase();
+    if (lower.includes("codex")) return "codex";
+    if (lower.includes("claude")) return "claude";
+    return undefined;
+  };
+
+  try {
+    const cmdline = readFileSync(`/proc/${process.ppid}/cmdline`, "utf8");
+    const inferred = parseCommand(cmdline.replace(/\u0000/g, " "));
+    if (inferred) return inferred;
+  } catch {
+    // Ignore and fall back to ps lookup below.
+  }
+
+  try {
+    const command = execFileSync(
+      "ps",
+      ["-o", "command=", "-p", String(process.ppid)],
+      { encoding: "utf8" }
+    );
+    return parseCommand(command.trim());
+  } catch {
+    return undefined;
+  }
+}
+
+function resolveStdioClientId(): ClientId {
+  return (
+    parseClientId(getArgValue("--client-id")) ??
+    parseClientId(getArgValue("--client")) ??
+    parseClientId(process.env.TULAYNGMAMAMO_CLIENT_ID) ??
+    parseClientId(process.env.MCP_CLIENT_ID) ??
+    inferClientIdFromParentProcess() ??
+    "claude"
+  );
+}
+
 async function runStdioMode(): Promise<void> {
   const db = openDb();
   migrate(db);
+  const clientId = resolveStdioClientId();
 
   const server = createMcpServer(db, {
-    clientId: "claude",
+    clientId,
     codexMcpEnabled: CODEX_MCP_ENABLED,
     codexMcpClientOpts: {
       codexPath: CODEX_PATH,

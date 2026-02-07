@@ -55,18 +55,20 @@ Start the server first (`tulayngmamamo` or `npx tulayngmamamo`), then configure 
 }
 ```
 
-### Option 2: Via npx (auto-starts server)
+### Option 2: Via npx (stdio mode)
 
 ```json
 {
   "mcpServers": {
     "tulayngmamamo": {
       "command": "npx",
-      "args": ["tulayngmamamo"]
+      "args": ["tulayngmamamo", "--stdio", "--client-id", "claude"]
     }
   }
 }
 ```
+
+For Codex, use `"codex"` as the client id instead of `"claude"`.
 
 ## MCP Tools
 
@@ -121,6 +123,7 @@ The Oracle acts as a strategic advisor who:
 | `TULAYNGMAMAMO_PORT` | `3790` | Server port |
 | `TULAYNGMAMAMO_DB` | `~/.tulayngmamamo/tulayngmamamo.sqlite` | Database path |
 | `MEMORANTADO_URL` | `http://127.0.0.1:3789` | memorantado integration URL |
+| `TULAYNGMAMAMO_CLIENT_ID` | auto-detect (fallback: `claude`) | Client identity for stdio mode (`claude` or `codex`) |
 | `TULAYNGMAMAMO_CODEX_MODEL` | `gpt-5.3-codex` | Default Codex model |
 | `TULAYNGMAMAMO_CODEX_REASONING_EFFORT` | `xhigh` | Default Codex reasoning effort |
 
